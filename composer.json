@@ -1,0 +1,14 @@
+{
+    "name": "mr_robertamoah/dto",
+    "description": "this will help you create dtos from requests quite easily",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Robert Amoah",
+            "email": "mr_robertamoah@yahoo.com"
+        }
+    ],
+    "require-dev": {
+        "orchestra/testbench": "^6.20"
+    }
+}
