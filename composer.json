@@ -10,5 +10,22 @@
     ],
     "require-dev": {
         "orchestra/testbench": "^6.20"
+    },
+    "autoload": {
+        "psr-4": {
+            "MrRobertAmoah\\DTO\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MrRobertAmoah\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "Laravel": {
+            "providers": [
+                
+            ]
+        }
     }
 }
