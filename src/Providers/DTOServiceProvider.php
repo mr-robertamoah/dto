@@ -1,8 +1,9 @@
 <?php
 
-namespace MrRobertAmoah\Providers;
+namespace MrRobertAmoah\DTO\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use MrRobertAmoah\DTO\Console\CreateDTOCommand;
 
 class DTOServiceProvider extends ServiceProvider
 {
@@ -15,13 +16,15 @@ class DTOServiceProvider extends ServiceProvider
     
     public function register()
     {
-        
+        $this->commands([
+            CreateDTOCommand::class
+        ]);
     }
 
     private function registerPublishables()
     {
         $this->publishes([
-            __DIR__ . "/../../config/dto" => config_path("dto.php")
+            __DIR__ . "/../../config/dto.php" => config_path("dto.php")
         ], 'dto-config');
     }
 }

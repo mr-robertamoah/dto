@@ -3,8 +3,12 @@
 namespace App\Traits;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use MrRobertAmoah\DTO\Exceptions\DTOMethodNotFound;
 use ReflectionObject;
 use ReflectionProperty;
+use Illuminate\Support\Str;
+use MrRobertAmoah\DTO\Exceptions\DTOPropertyNotFound;
 
 trait DTOTrait
 {
@@ -12,22 +16,97 @@ trait DTOTrait
     public ?array $id = null;
     public ?ReflectionObject $dtoReflectionObject = null;
 
+    private bool $forcePropertyOnDTO = false;
+
+    public function __callStatic($method, $arguments)
+    {
+        if (strtolower($method) === 'forceproperty') {
+            return (new static)->setForceProperty();
+        }
+        
+        if ($this->suppressException('method')) {
+            return new static;
+        }
+
+        throw new DTOMethodNotFound("{$method} static method was not found on this dto.");
+    }
+
+    public function __call($method, $arguments)
+    {
+        if ($method === 'addData') {
+            return $this->addPropertyValues($arguments);
+        }
+
+        if (substr($method, 0, 4) === 'with' && count($arguments)) {
+            return $this->with($this->getPropertyForWith($method), $arguments[0]);
+        }
+
+        if (strtolower($method) === 'forceproperty') {
+            return $this->setForceProperty();
+        }
+        
+        if ($this->suppressException('method')) {
+            return $this;
+        }
+
+        throw new DTOMethodNotFound("{$method} method was not found on this dto.");
+    }
+
     public static function new()
     {
         return new static;
     }
 
-    public function __call($method, $parameters)
+    public static function fromRequest(Request $request, string $method = 'toArray')
     {
-        if ($method === 'addData') {
-            return $this->addPropertyValues($parameters);
+        static::new()->createDTOFromRequest($request, $method);
+    }
+
+    public static function fromArray(array $data)
+    {
+        
+    }
+
+    private function createDTOFromRequest($request, $method)
+    {
+        if (property_exists($this, 'user')) {
+            $this->user = $request->user();
+        } else {
+            $this->userId = $request->user()?->id;
         }
 
-        $startWith = substr($method, 0, 4);
+        $this->setMainPropertyId($request);
 
-        if ($startWith === 'with' && count($parameters)) {
-            return $this->with($this->getPropertyForWith($method), $parameters[0]);
+        $this->setOtherProperties($request, $method);
+
+        $this->setFileProperties($request);
+
+        if (method_exists($this, 'fromRequestExtension')) {
+            return $this->fromRequestExtension($request) ?: $this;
         }
+
+        return $this;
+    }
+
+    private function createDTOFromArray(array $data)
+    {
+        foreach($data as $key => $value)
+        {
+            $this->with($key, $value);
+        }
+
+        if (method_exists($this, 'fromArrayExtension')) {
+            return $this->fromArrayExtension($data) ?: $this;
+        }
+
+        return $this;
+    }
+
+    private function setForceProperty()
+    {
+        $this->forcePropertyOnDTO = true;
+
+        return $this;
     }
 
     private function setReflectionObject($object = null)
@@ -63,10 +142,12 @@ trait DTOTrait
 
     private function getValueForProperty($value)
     {
-        foreach ($this->dtoReflectionObject as $property) {
-            if ($property->getName() === $value) {
-                return $property->getValue();
+        foreach ($this->dtoReflectionObject->getProperties() as $property) {
+            if ($property->getName() !== $value) {
+                continue;
             }
+
+            return $property->getValue();
         }
 
         return null;
@@ -74,7 +155,7 @@ trait DTOTrait
 
     private function isValidProperty($value)
     {
-        foreach ($this->dtoReflectionObject as $property) {
+        foreach ($this->dtoReflectionObject?->getProperties() ?: [] as $property) {
             if ($property->getName() === $value) {
                 return true;
             }
@@ -88,38 +169,77 @@ trait DTOTrait
         return ! $this->isValidProperty($value);
     }
 
-    public static function createFromRequest(Request $request)
+    private function propertyShouldBeForced()
     {
-        $self = new static;
-
-        if (property_exists($self, 'user')) {
-            $self->user = $request->user();
-        } else {
-            $self->userId = $request->user()?->id;
+        if ($this->forcePropertyOnDTO) {
+            return true;
         }
 
-        $self = $self->setMainPropertyId($self, $request);
-
-        $self = $self->setOtherProperties($self, $request);
-
-        if (method_exists($self, 'createFromRequestExtension')) {
-            return $self->createFromRequestExtension($request);
-        }
-
-        return $self;
+        return config('dto.forcePropertyOnDTO', false);
     }
 
-    private function setOtherProperties($self, $request)
+    private function propertyShouldNotBeForced()
     {
-        $self = $this->setReflectionObject($self);
+        return !$this->propertyShouldBeForced();
+    }
 
-        $input = $request->toArray();
+    private function setOtherProperties($request, $method)
+    {
+        $this->setReflectionObject();
 
-        foreach ($self->dtoReflectionObject->getProperties() as $property) {
-            $self = $this->with($property, $this->getInputValue($input, $property));
+        $input = $this->getRequestData($request, $method);
+
+        foreach ($this->dtoReflectionObject->getProperties() as $property) {
+            $this->with($property, $this->getInputValue($input, $property));
         }
 
-        return $self;
+        return $this;
+    }
+
+    private function setFileProperties($request)
+    {
+        foreach ($this->isValidProperty('dtoFiles') ? $this->dtoFiles : [] as $filePropertyName) {
+            if (! $request->hasFile($filePropertyName)) {
+                continue;
+            }
+
+            if ($this->isInvalidProperty($filePropertyName) && $this->dontSuppressException('property')) {
+                throw new DTOPropertyNotFound("{$filePropertyName} property, which is for files was not set properly");
+            }
+
+            $this->$filePropertyName = $request->file($filePropertyName);
+        }
+
+        return $this;
+    }
+
+    private function suppressException(string $type)
+    {
+        $types = ['property', 'method'];
+
+        if (! in_array($type, $types) || ! File::exists(config_path('dto.php'))) {
+            return false;
+        }
+
+        return config("dto.suppress{$this->format($type)}NotFoundException", false);
+    }
+
+    private function dontSuppressException(string $type)
+    {
+        return ! $this->suppressException($type);
+    }
+
+    private function getRequestData($request, $method = 'toArray')
+    {
+        if (method_exists($this, 'requestToArray')) {
+            return $this->requestToArray($request);
+        }
+        
+        if (property_exists($this, $method)) {
+            return $this->$method;
+        }
+
+        return $request->toArray();
     }
 
     private function getInputValue(array $input, ReflectionProperty $property)
@@ -159,19 +279,24 @@ trait DTOTrait
         return array_map(fn ($key) => strtolower($key), $keys);
     }
 
-    private function setMainPropertyId($self, $request)
+    private function getPropertyWithoutDTOFromBasename($basename)
     {
-        $property = strstr(class_basename($self::class), 'DTO', true);
+        return ! Str::endsWith(strtolower($basename), 'dto') ? $basename : strstr(strtolower($basename), 'dto', true);
+    }
 
-        $property = $this->format($property) . 'Id';
+    private function setMainPropertyId($request)
+    {
+        $basename = class_basename($this::class);
+
+        $property = $this->format($this->getPropertyWithoutDTOFromBasename($basename)) . 'Id';
 
         if ($property === 'userId') {
-            return $self;
+            return $this;
         }
 
-        $self->$property = $request->$property;
+        $this->$property = $request->$property;
 
-        return $self;
+        return $this;
     }
 
     private function getPropertyForWith($method)
@@ -188,13 +313,27 @@ trait DTOTrait
 
     private function with($property, $parameter)
     {
-        $isReflectionProperty = !is_string($property);
+        $isNotProperty = ! property_exists($this, $property->name ?: $property);
 
-        if (!property_exists($this, $isReflectionProperty ? $property->name : $property)) {
-            return;
+        if ($isNotProperty && $this->suppressException('property')) {
+            return $this;
         }
 
-        if (! $isReflectionProperty) {
+        if ($isNotProperty) {
+            $property = $property->name ? : $property;
+
+            throw new DTOPropertyNotFound("{$property} property was not properly set on this dto");
+        }
+
+        if ($this->isPropertyExcluded($property->name ?: $property)) {
+            return $this;
+        }
+
+        if ($this->isInvalidProperty($property->name ?: $property) && $this->propertyShouldNotBeForced()) {
+            return $this;
+        }
+
+        if (is_string($property)) {
             
             $this->$property = $parameter;
 
@@ -203,10 +342,6 @@ trait DTOTrait
         
         $type = $property->getType();
         $propertyName = $property->name;
-
-        if ($this->propertyIsExcluded($propertyName)) {
-            return $this;
-        }
 
         if (! is_null($parameter)) {
             $this->$propertyName = $this->setPropertyBasedOnType($type, $parameter);
@@ -220,26 +355,16 @@ trait DTOTrait
             return $this;
         }
 
-        if (
-            ! $type->allowsNull() && 
-            $property->isInitialized($this)
-        ) {
+        if ($property->isInitialized($this)) {
             return $this;
         }
 
-        if (
-            ! $type->allowsNull() && 
-            ! $property->isInitialized($this)
-        ) {
-            $this->$propertyName = $this->getPropertyDefaultBasedOnTypeName($type->getName());
-
-            return $this;
-        }
+        $this->$propertyName = $this->getPropertyDefaultValueBasedOnType($type->getName());
 
         return $this;
     }
 
-    public function propertyIsExcluded($propertyName)
+    public function isPropertyExcluded($propertyName)
     {
         if (in_array($propertyName, property_exists($this, 'dtoExclude') ? $this->dtoExclude : [])) {
             return true;
@@ -271,17 +396,17 @@ trait DTOTrait
         return $parameter;
     }
 
-    private function getPropertyDefaultBasedOnTypeName($typeName)
+    private function getPropertyDefaultValueBasedOnType($type)
     {
-        if ($typeName === 'array') {
+        if ($type === 'array') {
             return [];
         }
         
-        if ($typeName === 'object') {
+        if ($type === 'object') {
             return new ReflectionObject(null);
         }
         
-        if ($typeName === 'integer') {
+        if ($type === 'integer') {
             return 0;
         }
 

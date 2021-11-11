@@ -1,5 +1,5 @@
 {
-    "name": "mr_robertamoah/dto",
+    "name": "mr-robertamoah/dto",
     "description": "this will help you create dtos from requests quite easily",
     "license": "MIT",
     "authors": [
@@ -13,7 +13,8 @@
     },
     "autoload": {
         "psr-4": {
-            "MrRobertAmoah\\DTO\\": "src/"
+            "MrRobertAmoah\\DTO\\": "src/",
+            "MrRobertAmoah\\Database\\": "database/"
         }
     },
     "autoload-dev": {
@@ -22,9 +23,9 @@
         }
     },
     "extra": {
-        "Laravel": {
+        "laravel": {
             "providers": [
-                
+                "MrRobertAmoah\\DTO\\Providers\\DTOServiceProvider"
             ]
         }
     }
