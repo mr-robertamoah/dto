@@ -3,4 +3,10 @@
 .phpunit.result.cache
 
 /src/TestingStuff.php
+/src/HTTP
+
+/database
+/routes
+
+
 

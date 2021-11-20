@@ -175,8 +175,6 @@ class CreateDTOCommand extends Command
         }
 
         $fileName = $this->setSubFoldersAndFileName($fileName); //contains the subfolders
-        
-        $this->info($this->fileName);
 
         if ($this->subFolders) {
             
@@ -250,8 +248,6 @@ class CreateDTOCommand extends Command
                 $path, 
                 $this->adjustStubContent($this->getStub())
             );
-
-            // dd($this->fileName, $fileName);
 
             $this->info("{$this->fileName}.php was successfully created.");
         }

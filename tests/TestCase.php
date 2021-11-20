@@ -9,11 +9,21 @@ use Orchestra\Testbench\TestCase as TestbenchTestCase;
 class TestCase extends TestbenchTestCase
 {
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+    }
+
     protected function getPackageProviders($app)
     {
         return [
             DTOServiceProvider::class
         ];
+    }
+
+    protected function getEnvironmentSetUp($app)
+    {
+        $app['config']->set('database.default', 'testing');
     }
 
     public function makeDTOFiles(string|array $fileName, string $content = '')

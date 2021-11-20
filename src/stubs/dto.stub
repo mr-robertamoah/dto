@@ -16,7 +16,7 @@ class {{ class }} extends BaseDTO
      * @param  Illuminate\Http\Request  $request
      * @return MrRobertAmoah\DTO\BaseDTO
      */
-    public function fromRequestExtension(Request $request)
+    protected function fromRequestExtension(Request $request)
     {
         return $this;
     }
@@ -28,7 +28,7 @@ class {{ class }} extends BaseDTO
      * @param  array  $data
      * @return MrRobertAmoah\DTO\BaseDTO
      */
-    public function fromArrayExtension(array $data = [])
+    protected function fromArrayExtension(array $data = [])
     {
         return $this;
     }

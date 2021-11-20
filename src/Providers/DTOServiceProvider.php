@@ -2,6 +2,7 @@
 
 namespace MrRobertAmoah\DTO\Providers;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use MrRobertAmoah\DTO\Console\CreateDTOCommand;
 
@@ -12,6 +13,7 @@ class DTOServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->registerPublishables();
         }
+        
     }
     
     public function register()

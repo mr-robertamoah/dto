@@ -2,11 +2,21 @@
 
 namespace MrRobertAmoah\Tests;
 
-use Illuminate\Support\Facades\File;
+use MrRobertAmoah\DTO\Exceptions\DTOMethodNotFound;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use MrRobertAmoah\DTO\DTOs\ExampleDTO;
+use MrRobertAmoah\DTO\DTOs\ImageDTO;
+use MrRobertAmoah\DTO\DTOs\ImageExcludeDTO;
+use MrRobertAmoah\DTO\DTOs\ImageOnlyDTO;
 use MrRobertAmoah\DTO\Exceptions\DTOFileAlreadyExists;
+use MrRobertAmoah\DTO\Exceptions\DTOPropertyNotFound;
+use MrRobertAmoah\DTO\Exceptions\DTOWrongArgument;
+use MrRobertAmoah\DTO\Models\User;
 
 class DTOTest extends TestCase
 {
+    use RefreshDatabase;
 
     public function testCommandCanCreateASingleDTOFile()
     {
@@ -153,5 +163,356 @@ class DTOTest extends TestCase
         $this->assertDTOFileExists('Image');
 
         $this->deleteDTODirectory();
+    }
+
+    public function testDTOCanBeCreatedFromArrayUsingSetProperties()
+    {        
+        $data = [
+            'name' => 'robert amoah'
+        ];
+
+        $dto = ExampleDTO::fromArray($data);
+
+        $this->assertIsObject($dto);
+
+        $this->assertEquals($dto->name, $data['name']);
+    }
+
+    public function testDTOCanBeCreatedFromRequestUsingSetProperties()
+    {        
+        $data = [
+            'name' => 'robert amoah'
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $dto = ExampleDTO::fromRequest($request->replace($data));
+
+        $this->assertIsObject($dto);
+
+        $this->assertEquals($dto->name, $data['name']);
+    }
+
+    public function testDTOCanSetDataKeysWithArray()
+    {
+        $data = ['name', 'date'];
+        $dto = ExampleDTO::new()->setDataKeys($data);
+
+        $this->assertIsArray($dto->getDataKeys());
+        $this->assertEquals($data, $dto->getDataKeys());
+    }
+
+    public function testDTOCanSetDataKeysWithString()
+    {
+        $data = 'name, date';
+        $dto = ExampleDTO::new()->setDataKeys($data);
+
+        $this->assertIsArray($dto->getDataKeys());
+        $this->assertCount(2, $dto->getDataKeys());
+        $this->assertEquals('name', $dto->getDataKeys()[0]);
+    }
+
+    public function testDTOExpectsWrongArgumentExceptionWhenSettingDataKeys()
+    {
+        $this->expectException(DTOWrongArgument::class);
+
+        ExampleDTO::new()->setDataKeys();
+    }
+
+    public function testDTOCanGetDataAsArrayWhenDataKeysAreSet()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images'
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $dto = ImageDTO::new()->setDataKeys('name, mime')->fromRequest($request->replace($data));
+
+        $this->assertIsArray($dto->getDataKeys());
+
+        $this->assertEquals($dto->name, $data['name']);
+        $this->assertEquals($dto->mime, $data['mime']);
+        $this->assertCount(2, $dto->getDataKeys());
+
+        $dtoData = $dto->getData();
+        $this->assertIsArray($dtoData);
+        $this->assertArrayHasKey('name', $dtoData);
+        $this->assertArrayHasKey('mime', $dtoData);
+        $this->assertArrayNotHasKey('size', $dtoData);
+        $this->assertArrayNotHasKey('path', $dtoData);
+    }
+
+    public function testDTOCanGetEmptyDataAsArrayWhenDataKeysAreNotSet()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images'
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $dto = ImageDTO::fromRequest($request->replace($data));
+
+        $this->assertIsArray($dto->getDataKeys());
+
+        $this->assertEquals($dto->name, $data['name']);
+        $this->assertEquals($dto->mime, $data['mime']);
+        $this->assertCount(0, $dto->getDataKeys());
+
+        $dtoData = $dto->getData();
+        $this->assertIsArray($dtoData);
+        $this->assertArrayNotHasKey('name', $dtoData);
+        $this->assertArrayNotHasKey('mime', $dtoData);
+        $this->assertArrayNotHasKey('size', $dtoData);
+        $this->assertArrayNotHasKey('path', $dtoData);
+    }
+
+    public function testDTOCanGetFilledDataAsArrayWhenDataKeysAreNotSetButFilledIsSetToTrue()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images'
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $dto = ImageDTO::fromRequest($request->replace($data));
+
+        $this->assertIsArray($dto->getDataKeys());
+
+        $this->assertEquals($dto->name, $data['name']);
+        $this->assertEquals($dto->mime, $data['mime']);
+        $this->assertCount(0, $dto->getDataKeys());
+
+        $dtoData = $dto->getData(true);
+        $this->assertIsArray($dtoData);
+        $this->assertArrayHasKey('name', $dtoData);
+        $this->assertArrayHasKey('mime', $dtoData);
+        $this->assertArrayHasKey('path', $dtoData);
+        $this->assertArrayNotHasKey('size', $dtoData);
+    }
+
+    public function testDTOCanGetFilledDataAsArray()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images'
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $dto = ImageDTO::fromRequest($request->replace($data));
+
+        $this->assertIsArray($dto->getDataKeys());
+
+        $this->assertEquals($dto->name, $data['name']);
+        $this->assertEquals($dto->mime, $data['mime']);
+        $this->assertCount(0, $dto->getDataKeys());
+
+        $dtoData = $dto->getFilledData();
+        $this->assertIsArray($dtoData);
+        $this->assertArrayHasKey('name', $dtoData);
+        $this->assertArrayHasKey('mime', $dtoData);
+        $this->assertArrayHasKey('path', $dtoData);
+        $this->assertArrayNotHasKey('size', $dtoData);
+    }
+
+    //set files values
+    public function testDTOCanSetPropertiesAsFilesUsingArray()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageDTO::new()->setFileKeys([
+            'file', 'hey'
+        ])->fromRequest($request->replace($data));
+        
+        $fileKeys = $dto->getFileKeys();
+
+        $this->assertIsArray($fileKeys);
+        $this->assertCount(2, $fileKeys);
+
+        $this->assertEquals('file', $fileKeys[0]);
+        $this->assertEquals('hey', $fileKeys[1]);
+    }
+
+    public function testDTOCanSetPropertyUsingWithPropertyMethod()
+    { 
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageDTO::new()->setFileKeys([
+            'file', 'hey'
+        ])->fromRequest($request->replace($data));
+        
+        $dto = $dto->withName('sup.jpg');
+
+        $this->assertEquals('sup.jpg',  $dto->name);
+    }
+
+    public function testDTOCannotSetWrongPropertyUsingWithPropertyMethod()
+    { 
+        $this->expectException(DTOPropertyNotFound::class);
+
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageDTO::new()->setFileKeys([
+            'file', 'hey'
+        ])->fromRequest($request->replace($data));
+        
+        $dto = $dto->withImage('sup.jpg');
+
+        $this->assertEquals('sup.jpg',  $dto->name);
+    }
+
+    public function testDTOCanSetPropertiesUsingWithAddDataMethod()
+    { 
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/png',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageDTO::new()->setFileKeys([
+            'file', 'hey'
+        ])->fromRequest($request->replace($data));
+        
+        $dto = $dto->addData(['name' => 'sup.jpg', 'path' => 'image/jpg']);
+
+        $this->assertEquals('sup.jpg',  $dto->name);
+        $this->assertEquals('image/jpg',  $dto->path);
+    }
+
+    public function testDTOCannotSetWrongPropertiesUsingWithAddDataMethod()
+    { 
+        $this->expectException(DTOPropertyNotFound::class);
+
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/png',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageDTO::new()->setFileKeys([
+            'file', 'hey'
+        ])->fromRequest($request->replace($data));
+        
+        $dto = $dto->addData(['image' => 'sup.jpg', 'path' => 'image/jpg']);
+
+        $this->assertEquals('sup.jpg',  $dto->name);
+        $this->assertEquals('image/jpg',  $dto->path);
+    }
+
+    public function testDTOExpectsWrongArgumentExceptionWhenCallingStaticMethodWithNoOrWrongArguments()
+    {
+        $this->expectException(DTOWrongArgument::class);
+
+        ExampleDTO::fromArray('hey'); //wrong argument
+    }
+
+    public function testDTOExpectsWrongArgumentExceptionWhenCallingWrongStaticMethod()
+    {
+        $this->expectException(DTOMethodNotFound::class);
+
+        ExampleDTO::setDataKeys(); //wrong static method
+    }
+
+    public function testDTOExpectsWrongArgumentExceptionWhenCallingMethodWithNoOrWrongArguments()
+    {
+        $this->expectException(DTOWrongArgument::class);
+
+        ExampleDTO::new()->setFileKeys(); //no arguments
+    }
+
+    public function testDTOExpectsWrongArgumentExceptionWhenCallingWrongMethod()
+    {
+        $this->expectException(DTOMethodNotFound::class);
+
+        ExampleDTO::new()->setDataKey(); //wrong method
+    }
+
+    //test dtoExclude and dtoOnly forceproperties
+    public function testDTOCanSetValuesOfOnlyPropertiesInDTOOnly()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageOnlyDTO::fromRequest($request->replace($data));
+
+        $this->assertCount(2, $dto->getFilledData());
+        $this->assertEquals($data['name'], $dto->name);
+        $this->assertEquals($data['mime'], $dto->mime);
+        $this->assertNotEquals($data['path'], $dto->path);
+        $this->assertNotEquals($data['size'], $dto->size);
+
+    }
+    
+    public function testDTOCanSetValuesOfPropertiesWhileExcludingThoseInDTOExclude()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $request = Request::createFromGlobals();
+        
+        $dto = ImageExcludeDTO::fromRequest($request->replace($data));
+
+        $this->assertCount(4, $dto->getFilledData());
+        $this->assertEquals($data['name'], $dto->name);
+        $this->assertEquals($data['mime'], $dto->mime);
+        $this->assertNotEquals($data['path'], $dto->path);
+        $this->assertNotEquals($data['size'], $dto->size);
+
     }
 }

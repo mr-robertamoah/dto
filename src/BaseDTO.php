@@ -2,12 +2,21 @@
 
 namespace MrRobertAmoah\DTO;
 
-use App\Traits\DTOTrait;
+use MrRobertAmoah\DTO\Traits\DTOTrait;
 use Illuminate\Http\Request;
 
 abstract class BaseDTO
 {
     use DTOTrait;
+
+    const EXCLUDED = [
+        'dtoDataKeys', 
+        'dtoFileKeys', 
+        'dtoExclude', 
+        'dtoOnly', 
+        'dtoReflectionObject'
+    ];
+
 
     /*
     * these are the names of properties to be
@@ -28,20 +37,20 @@ abstract class BaseDTO
     * by setting keys that corresspond to
     * property names required in the data
     */
-    protected array $dtoKeys = [];
+    protected array $dtoDataKeys = [];
 
     /*
     * this helps set properties that are 
     * files
     */
-    protected array $dtoFiles = [];
+    protected array $dtoFileKeys = [];
     
-    public function fromRequestExtension(Request $request)
+    protected function fromRequestExtension(Request $request) : BaseDTO
     {
         return $this;
     }
     
-    public function fromArrayExtension(array $data)
+    protected function fromArrayExtension(array $data) : BaseDTO
     {
         return $this;
     }

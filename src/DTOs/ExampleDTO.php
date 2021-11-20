@@ -10,10 +10,13 @@ class ExampleDTO extends BaseDTO
 {
     public string $name;
     public string $email;
+    public string|int $userId;
     public string $date;
 
-    public function fromRequestExtension(Request $request)
+    public function fromRequestExtension(Request $request) : BaseDTO
     {
-        return $this->date = new Carbon();
+        $this->date = new Carbon();
+
+        return $this;
     }
 }
