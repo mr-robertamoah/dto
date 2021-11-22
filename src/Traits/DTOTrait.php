@@ -12,12 +12,15 @@ use MrRobertAmoah\DTO\BaseDTO;
 use MrRobertAmoah\DTO\Exceptions\DTOPropertyNotFound;
 use MrRobertAmoah\DTO\Exceptions\DTOWrongArgument;
 use ReflectionUnionType;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 trait DTOTrait
 {
     public ?ReflectionObject $dtoReflectionObject = null;
 
     private bool $forcePropertyOnDTO = false;
+
+    private bool $testFile = false;
 
     private array $reservedProperties = [
         'dtoReflectionObject',
@@ -439,13 +442,62 @@ trait DTOTrait
         return $this;
     }
 
-    private function addFile($property, $file)
+    private function testFile()
     {
-        // if (!is_array($file)) {
-            
-        // }
+        $this->testFile = true;
+    }
 
-        $this->$property = $file;
+    private function dontTestFile()
+    {
+        $this->testFile = false;
+    }
+
+    private function addFile($property, array|UploadedFile|string $file)
+    {
+        try {
+            if ($file instanceof UploadedFile) {
+                $this->$property = $file;
+
+                return $this;
+            }
+            
+            if (is_string($file)) {
+                $this->$property = $this->makeFile($file);
+
+                return $this;
+            }
+    
+            $this->$property = array_map(function($f){
+                if ($f instanceof UploadedFile) {
+                    return $f;
+                }
+
+                if (is_string($f)) {
+                    return $this->makeFile($f);
+                }
+
+                $class = UploadedFile::class;
+
+                throw new DTOWrongArgument("items in the array given must be either a string or a {$class} object");
+            }, $file);
+        } catch (\Throwable $th) {
+            throw new DTOWrongArgument("sorry! you might have tried to assign a non file value to a file property.");
+        }
+    }
+
+    private function makeFile($file)
+    {
+        if (File::exists($file)) {
+            throw new DTOWrongArgument("{$file} does not exist");
+        }
+        
+        return new UploadedFile(
+            $file,
+            File::name($file),
+            File::mimeType($file),
+            null,
+            $this->testFile
+        );
     }
 
     private function suppressException(string $type)

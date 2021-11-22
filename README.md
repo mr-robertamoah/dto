@@ -234,6 +234,7 @@ The DTO will throw a DTOPropertyNotFound exception when you try to assign a valu
             $userDTO->forceProperties()->fromRequest($request)
         ):
     }
+```
 
 ## Exceptions
 These are the following exceptions that are thrown by this package:

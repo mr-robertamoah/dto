@@ -5,6 +5,7 @@ namespace MrRobertAmoah\Tests;
 use Illuminate\Support\Facades\File;
 use MrRobertAmoah\DTO\Providers\DTOServiceProvider;
 use Orchestra\Testbench\TestCase as TestbenchTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class TestCase extends TestbenchTestCase
 {
@@ -67,5 +68,10 @@ class TestCase extends TestbenchTestCase
     public function getDTODirectory()
     {
         return "{$this->app->basePath('app')}/DTOs";
+    }
+
+    protected function makeFile($file)
+    {
+        return new UploadedFile($file,File::name($file),File::mimeType($file),null,true);
     }
 }

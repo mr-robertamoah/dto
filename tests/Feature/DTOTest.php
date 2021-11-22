@@ -5,7 +5,10 @@ namespace MrRobertAmoah\Tests;
 use MrRobertAmoah\DTO\Exceptions\DTOMethodNotFound;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use MrRobertAmoah\DTO\DTOs\ExampleDTO;
+use MrRobertAmoah\DTO\DTOs\FilesDTO;
 use MrRobertAmoah\DTO\DTOs\ImageDTO;
 use MrRobertAmoah\DTO\DTOs\ImageExcludeDTO;
 use MrRobertAmoah\DTO\DTOs\ImageOnlyDTO;
@@ -471,7 +474,6 @@ class DTOTest extends TestCase
         ExampleDTO::new()->setDataKey(); //wrong method
     }
 
-    //test dtoExclude and dtoOnly forceproperties
     public function testDTOCanSetValuesOfOnlyPropertiesInDTOOnly()
     {
         $data = [
@@ -514,5 +516,36 @@ class DTOTest extends TestCase
         $this->assertNotEquals($data['path'], $dto->path);
         $this->assertNotEquals($data['size'], $dto->size);
 
+    }
+
+    public function testDTOCanSetFilePropertiesUsingWithAddDataMethod()
+    { 
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/png',
+            'size' => 72382923892,
+            'path' => 'storage/images',
+            'file' => null
+        ];
+
+        $file = __DIR__ . "/../../src/stubs/dto.stub";
+        $files = [
+            'one' => $this->makeFile($file),
+            'multiple' => [
+                new UploadedFile($file,File::name($file),File::mimeType($file),null,true),
+                $this->makeFile($file)
+            ]
+        ];
+
+        $request = new Request(
+            query: $data,
+            files: $files
+        );
+        
+        $dto = FilesDTO::fromRequest($request);
+        // dd($dto);
+        $this->assertEquals($data['name'],  $dto->name);
+        $this->assertEquals($files['one']->getClientOriginalName(),  $dto->one->getClientOriginalName());
+        $this->assertCount(2,  $dto->multiple);
     }
 }
