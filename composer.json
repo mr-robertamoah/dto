@@ -1,6 +1,6 @@
 {
     "name": "mr-robertamoah/dto",
-    "description": "this will help you create dtos from requests quite easily",
+    "description": "this will help you create dtos from requests and arrays quite easily",
     "license": "MIT",
     "authors": [
         {
@@ -8,6 +8,7 @@
             "email": "mr_robertamoah@yahoo.com"
         }
     ],
+    "keywords": ["dto", "dtos", "data transfer objects"],
     "require": {
         "php": ">=8.0"
     },
