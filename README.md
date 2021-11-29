@@ -32,6 +32,19 @@ The following shows the keys of the config file and what they do:
 
 ## Usage
 Below are a break down of how to use the DTO
+### Creating File
+You can always create a file manually and extend the ```BaseDTO``` class or use laravel's artisan commands.
+```php
+    php artisan dto:make UserDTO
+```
+Note the following options on the command:
++ ```--folderName```: point to the app folder in which to create the DTO
++ ```--attachDTO```: whether or not to attach DTO to the name of the files and classes
++ ```--force```: force the creation of a file even if file already exists 
+You can create multiple files as well.
+```php
+    php artisan dto:make UserDTO ImageDTO
+```
 ### Setting Properties
 ```php
     class UserDTO extends BaseDTO
@@ -40,7 +53,7 @@ Below are a break down of how to use the DTO
         public $email;
     }
 ```
-### Creating
+### Creating Object
 #### **From Request**
 ```php
     public function create(Illuminate\Http\Request $request)

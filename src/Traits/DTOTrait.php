@@ -608,7 +608,7 @@ trait DTOTrait
         $propertyName = is_string($property) ? $property : $property->name;
         $isNotProperty = ! property_exists($this, $propertyName);
 
-        if ($this->isFileProperty($propertyName)) {
+        if ($this->isFileProperty($propertyName) && !is_null($parameter)) {
             return $this->addFile($propertyName, $parameter);
         }
 
@@ -693,7 +693,7 @@ trait DTOTrait
             return (int) $parameter;
         }
 
-        if (str_contains($typeName, 'float')) {
+        if (str_contains($typeName, 'float') || str_contains($typeName, 'double')) {
             return (float) $parameter;
         }
 
@@ -714,7 +714,7 @@ trait DTOTrait
             return (object) [];
         }
         
-        if (str_contains($type, 'float')) {
+        if (str_contains($type, 'float') || str_contains($type, 'double')) {
             return 0.0;
         }
         
