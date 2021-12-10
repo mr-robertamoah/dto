@@ -14,13 +14,12 @@ class DTOServiceProvider extends ServiceProvider
             $this->registerPublishables();
         }
         
+        $this->registerCommands();
     }
     
     public function register()
     {
-        $this->commands([
-            CreateDTOCommand::class
-        ]);
+        
     }
 
     private function registerPublishables()
@@ -28,5 +27,12 @@ class DTOServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . "/../../config/dto.php" => config_path("dto.php")
         ], 'dto-config');
+    }
+
+    private function registerCommands()
+    {
+        $this->commands([
+            CreateDTOCommand::class
+        ]);
     }
 }
