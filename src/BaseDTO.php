@@ -45,12 +45,12 @@ abstract class BaseDTO
     */
     protected array $dtoFileKeys = [];
     
-    protected function fromRequestExtension(Request $request) : BaseDTO
+    protected function fromRequestExtension(Request $request) : self
     {
         return $this;
     }
     
-    protected function fromArrayExtension(array $data) : BaseDTO
+    protected function fromArrayExtension(array $data) : self
     {
         return $this;
     }
