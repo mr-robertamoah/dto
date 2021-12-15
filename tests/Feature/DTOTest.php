@@ -242,6 +242,7 @@ class DTOTest extends TestCase
         $this->assertCount(2, $dto->getDataKeys());
 
         $dtoData = $dto->getData();
+        ray($dtoData);
         $this->assertIsArray($dtoData);
         $this->assertArrayHasKey('name', $dtoData);
         $this->assertArrayHasKey('mime', $dtoData);
@@ -274,6 +275,33 @@ class DTOTest extends TestCase
         $this->assertArrayNotHasKey('mime', $dtoData);
         $this->assertArrayNotHasKey('size', $dtoData);
         $this->assertArrayNotHasKey('path', $dtoData);
+    }
+
+    public function testDTOCanGetDataAsArrayWhenDataKeysAreNotSetButAllIsSetToTrue()
+    {
+        $data = [
+            'name' => 'cool.png',
+            'mime' => 'image/jpeg',
+            'path' => 'storage/images'
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $dto = ImageDTO::fromRequest($request->replace($data));
+
+        $this->assertIsArray($dto->getDataKeys());
+
+        $this->assertEquals($dto->name, $data['name']);
+        $this->assertEquals($dto->mime, $data['mime']);
+        $this->assertCount(0, $dto->getDataKeys());
+
+        $dtoData = $dto->appendSpecifiedDataKeys([
+            'name'=> 'name_key', 'mime'=>'mime_type'
+        ])->getData(all: true); //all is set to true
+        $this->assertIsArray($dtoData);
+        $this->assertArrayHasKey('name_key', $dtoData);
+        $this->assertArrayHasKey('mime_type', $dtoData);
+        $this->assertArrayHasKey('path', $dtoData);
     }
 
     public function testDTOCanGetFilledDataAsArrayWhenDataKeysAreNotSetButFilledIsSetToTrue()

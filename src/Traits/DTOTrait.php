@@ -29,6 +29,8 @@ trait DTOTrait
     private static array $methodsToSetAndAppendValuesToProperties = [
         'setdatakeys',
         'appenddatakeys',
+        'setspecifieddatakeys',
+        'appendspecifieddatakeys',
         'setfilekeys',
         'appendfilekeys',
     ];
@@ -260,7 +262,7 @@ trait DTOTrait
         return $this;
     }
 
-    public function getData(bool $filled = false) : array
+    public function getData(bool $filled = false, bool $all = false) : array
     {
         $dtoDataKeys = $this->isValidProperty('dtoDataKeys') ? $this->dtoDataKeys : [];
 
@@ -272,12 +274,12 @@ trait DTOTrait
 
         $data = [];
 
-        foreach ($dtoDataKeys as $value) {
+        foreach ($this->getAppropriateDTODataKeys($dtoDataKeys, $all) as $value) {
 
             $data[$value] = $this->getValueForProperty($value);
         }
 
-        return $data;
+        return $this->adjustWithSpecifiedKeys($data);
     }
 
     public function getFiles()
@@ -291,7 +293,7 @@ trait DTOTrait
             $data[$property] = $this->getValueForProperty($property);
         }
 
-        return $data;
+        return $this->adjustWithSpecifiedKeys($data);
     }
 
     public function getFilledData()
@@ -301,18 +303,14 @@ trait DTOTrait
         $data = [];
 
         foreach ($this->dtoReflectionObject->getProperties() as $property) {
-            if (
-                $this->isPropertyExcluded($property->getName()) ||
-                !$property->isPublic() ||
-                !$property->isInitialized($this)
-            ) {
+            if ($this->propertyValueCannotBeAccessed($property)) {
                 continue;
             }
 
             $data[$property->getName()] = $property->getValue($this);
         }
 
-        return $data;
+        return $this->adjustWithSpecifiedKeys($data);
     }
 
     public function getAllData()
@@ -321,6 +319,71 @@ trait DTOTrait
             ...$this->getData(),
             ...$this->getFiles()
         ];
+    }
+
+    private function getAppropriateDTODataKeys(array $dtoDataKeys, bool $all)
+    {
+        return count($dtoDataKeys) ? $dtoDataKeys : 
+            ($all ? $this->getProperties() : []);
+    }
+
+    private function getProperties()
+    {
+        $propertyNames = [];
+
+        foreach ($this->dtoReflectionObject->getProperties() as $property) {
+            if ($this->propertyValueCannotBeAccessed($property)) {
+                continue;
+            }
+
+            $propertyNames[] = $property->getName();
+        }
+
+        return $propertyNames;
+    }
+
+    private function propertyValueCanBeAccessed(ReflectionProperty $property)
+    {
+        if (
+            $this->isPropertyExcluded($property->getName()) ||
+            !$property->isPublic() ||
+            !$property->isInitialized($this)
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function propertyValueCannotBeAccessed(ReflectionProperty $property)
+    {
+        return !$this->propertyValueCanBeAccessed($property);
+    }
+
+    private function getSpecifiedDataArrayKeys()
+    {
+        return $this->isValidProperty('dtoSpecifiedDataKeys') ? $this->dtoSpecifiedDataKeys : [];
+    }
+
+    private function adjustWithSpecifiedKeys(array $data)
+    {
+        $specifiedKeys = $this->getSpecifiedDataArrayKeys();
+        if (!count($specifiedKeys)) {
+            return $data;
+        }
+
+        $newData = [];
+
+        foreach ($data as $key => $value) {
+            if (!in_array($key, array_keys($specifiedKeys))) {
+                $newData[$key] = $value;
+                continue;
+            }
+
+            $newData[$specifiedKeys[$key]] = $value;
+        }
+        ray($newData);
+        return $newData;
     }
 
     private function createProperty(string $property)
@@ -334,9 +397,11 @@ trait DTOTrait
 
     private function setOrAppend($method, $argument)
     {
-        $call = strtolower(substr($method, 0, 3));
-        $property = substr($method, 3);
-        $property = "dto" . strtoupper(substr($property, 0, 1)) . substr($property, 1);
+        $call = strtolower(substr($method, 0, 3)) === 'set' ? 'set' : 'append';
+        
+        $property = substr($method, strlen($call));
+
+        $property = "dto" . ucfirst($property);
 
         return $this->$call($property, $argument);
     }
@@ -358,7 +423,7 @@ trait DTOTrait
             $keys = array_map(fn($item)=> trim($item), explode(',', $keys));
         }
 
-        $this->$property = array_merge($this->$property, $keys);
+        $this->$property = array_merge($this->$property ?: [], $keys);
 
         return $this;
     }

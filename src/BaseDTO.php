@@ -14,7 +14,8 @@ abstract class BaseDTO
         'dtoFileKeys', 
         'dtoExclude', 
         'dtoOnly', 
-        'dtoReflectionObject'
+        'dtoReflectionObject',
+        'dtoSpecifiedDataKeys'
     ];
 
 
