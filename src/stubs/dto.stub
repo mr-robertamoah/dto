@@ -36,7 +36,7 @@ class {{ class }} extends BaseDTO
     /**
     * uncomment and use this function if you want to 
     * customize the key and value pairs
-    * to be used to create you dto and still get the 
+    * to be used to create your dto and still get the 
     * other features of the dto
     */
 //    public function requestToArray($request)

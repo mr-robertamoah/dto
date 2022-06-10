@@ -54,7 +54,7 @@ trait DTOTrait
         
         if ($methodInLowercase === 'fromrequest') {
 
-            if (!isset($arguments[0]) || gettype($arguments[0]) !== 'object' || $arguments[0]::class !== Request::class) {
+            if (static::new()->fromRequestIsNotAppropriate($arguments[0])) {
                 $class = Request::class;
 
                 throw new DTOWrongArgument("{$method} requires an object of {$class} class as a parameter.");
@@ -108,7 +108,7 @@ trait DTOTrait
 
         if ($methodInLowercase === 'fromrequest') {
 
-            if (!isset($arguments[0]) || gettype($arguments[0]) !== 'object' || $arguments[0]::class !== Request::class) {
+            if ($this->fromRequestIsNotAppropriate($arguments[0])) {
                 $class = Request::class;
 
                 throw new DTOWrongArgument("{$method} requires an object of {$class} class as a parameter.");
@@ -162,11 +162,11 @@ trait DTOTrait
     {
         $type = (new ReflectionProperty($this, $property))->getType();
 
-        if ($type::class === ReflectionUnionType::class) {
+        if ($type && $type::class === ReflectionUnionType::class) {
            return $this->getStringedTypesFromUnionType($type);
         }
 
-        return $type->getName();
+        return $type?->getName();
     }
 
     private function getStringedTypesFromUnionType(ReflectionUnionType $type)
@@ -319,6 +319,11 @@ trait DTOTrait
             ...$this->getData(),
             ...$this->getFiles()
         ];
+    }
+
+    private function fromRequestIsNotAppropriate($argument)
+    {
+        return !isset($argument) || gettype($argument) !== 'object' || !is_a($argument, Request::class);
     }
 
     private function getAppropriateDTODataKeys(array $dtoDataKeys, bool $all)
